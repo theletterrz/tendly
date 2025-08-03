@@ -1,4 +1,4 @@
-# Gamified Task Garden 🌱
+# Tendly 🌱
 
 A mobile-first productivity app where users grow a digital garden by completing tasks, maintaining focus, and avoiding distractions. Built with Expo React Native and integrated with XION's Mobile Development Kit and zkTLS for blockchain-verified achievements.
 
