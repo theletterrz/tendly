@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Animated,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Play, Pause, RotateCcw, Settings, Leaf } from 'lucide-react-native';
 
@@ -9,17 +15,17 @@ export default function FocusScreen() {
   const [isActive, setIsActive] = useState(false);
   const [mode, setMode] = useState<'focus' | 'break'>('focus');
   const [sessions, setSessions] = useState(0);
-  
+
   const totalSeconds = minutes * 60 + seconds;
   const initialSeconds = mode === 'focus' ? 25 * 60 : 5 * 60;
-  const progress = 1 - (totalSeconds / initialSeconds);
-  
+  const progress = 1 - totalSeconds / initialSeconds;
+
   const progressAnim = useRef(new Animated.Value(0)).current;
   const plantGrowthAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
+    let interval: ReturnType<typeof setInterval>;
+
     if (isActive && totalSeconds > 0) {
       interval = setInterval(() => {
         if (seconds > 0) {
@@ -33,7 +39,7 @@ export default function FocusScreen() {
       setIsActive(false);
       completeSession();
     }
-    
+
     return () => clearInterval(interval);
   }, [isActive, minutes, seconds, totalSeconds]);
 
@@ -47,11 +53,11 @@ export default function FocusScreen() {
 
   const completeSession = () => {
     if (mode === 'focus') {
-      setSessions(prev => prev + 1);
+      setSessions((prev) => prev + 1);
       setMode('break');
       setMinutes(5);
       setSeconds(0);
-      
+
       // Animate plant growth
       Animated.spring(plantGrowthAnim, {
         toValue: 1,
@@ -79,13 +85,17 @@ export default function FocusScreen() {
   };
 
   const formatTime = (mins: number, secs: number) => {
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, '0')}:${secs
+      .toString()
+      .padStart(2, '0')}`;
   };
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={mode === 'focus' ? ['#E8F4E6', '#F0F8EE'] : ['#FFF7ED', '#FEF3E2']}
+        colors={
+          mode === 'focus' ? ['#E8F4E6', '#F0F8EE'] : ['#FFF7ED', '#FEF3E2']
+        }
         style={styles.gradient}
       >
         <View style={styles.content}>
@@ -95,7 +105,8 @@ export default function FocusScreen() {
               {mode === 'focus' ? 'Focus Time' : 'Break Time'}
             </Text>
             <Text style={styles.subtitle}>
-              Session {sessions + 1} • {mode === 'focus' ? 'Grow your plants' : 'Rest and recharge'}
+              Session {sessions + 1} •{' '}
+              {mode === 'focus' ? 'Grow your plants' : 'Rest and recharge'}
             </Text>
           </View>
 
@@ -106,27 +117,31 @@ export default function FocusScreen() {
                 style={[
                   styles.progressRing,
                   {
-                    transform: [{
-                      rotate: progressAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ['0deg', '360deg'],
-                      }),
-                    }],
+                    transform: [
+                      {
+                        rotate: progressAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0deg', '360deg'],
+                        }),
+                      },
+                    ],
                   },
                 ]}
               />
-              
+
               {/* Plant Growth Animation */}
               <Animated.View
                 style={[
                   styles.plantContainer,
                   {
-                    transform: [{
-                      scale: plantGrowthAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [1, 1.2],
-                      }),
-                    }],
+                    transform: [
+                      {
+                        scale: plantGrowthAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [1, 1.2],
+                        }),
+                      },
+                    ],
                   },
                 ]}
               >
@@ -134,11 +149,11 @@ export default function FocusScreen() {
                   {progress < 0.3 ? '🌱' : progress < 0.7 ? '🌿' : '🌳'}
                 </Text>
               </Animated.View>
-              
+
               <Text style={styles.timerText}>
                 {formatTime(minutes, seconds)}
               </Text>
-              
+
               <Text style={styles.modeText}>
                 {mode === 'focus' ? 'Focus deeply' : 'Take a break'}
               </Text>
@@ -147,13 +162,10 @@ export default function FocusScreen() {
 
           {/* Controls */}
           <View style={styles.controls}>
-            <TouchableOpacity
-              style={styles.controlButton}
-              onPress={resetTimer}
-            >
+            <TouchableOpacity style={styles.controlButton} onPress={resetTimer}>
               <RotateCcw size={24} color="#8B7355" />
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[styles.mainButton, isActive && styles.pauseButton]}
               onPress={toggleTimer}
@@ -164,10 +176,8 @@ export default function FocusScreen() {
                 <Play size={32} color="#F5F1E8" />
               )}
             </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.controlButton}
-            >
+
+            <TouchableOpacity style={styles.controlButton}>
               <Settings size={24} color="#8B7355" />
             </TouchableOpacity>
           </View>
@@ -178,7 +188,7 @@ export default function FocusScreen() {
               <Text style={styles.statNumber}>{sessions}</Text>
               <Text style={styles.statLabel}>Sessions Today</Text>
             </View>
-            
+
             <View style={styles.statCard}>
               <View style={styles.compostReward}>
                 <Leaf size={16} color="#87A96B" />
@@ -186,7 +196,7 @@ export default function FocusScreen() {
               </View>
               <Text style={styles.statLabel}>Compost Earned</Text>
             </View>
-            
+
             <View style={styles.statCard}>
               <Text style={styles.statNumber}>7</Text>
               <Text style={styles.statLabel}>Day Streak</Text>
@@ -197,7 +207,8 @@ export default function FocusScreen() {
           <View style={styles.tipCard}>
             <Text style={styles.tipTitle}>🧘‍♀️ Focus Tip</Text>
             <Text style={styles.tipText}>
-              Remove distractions from your workspace. Put your phone in another room or use app blockers.
+              Remove distractions from your workspace. Put your phone in another
+              room or use app blockers.
             </Text>
           </View>
         </View>
