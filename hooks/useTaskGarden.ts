@@ -1,205 +1,160 @@
 import { useState, useEffect } from 'react';
-import { smartContractService } from '@/services/smartContractService';
+import { supabaseService } from '@/services/supabaseService';
+import { useAuth } from '@/hooks/useAuth';
+import { Database } from '@/types/database';
 
-export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high';
-  category: 'work' | 'personal' | 'health' | 'learning';
-  completed: boolean;
-  plantType: 'sprout' | 'flower' | 'tree';
-  compostReward: number;
-  createdAt: Date;
-  completedAt?: Date;
-  blockchainHash?: string;
-}
-
-export interface Plant {
-  id: string;
-  taskId: string;
-  type: 'sprout' | 'sapling' | 'flower' | 'tree';
-  growth: number;
-  position: { x: number; y: number };
-  plantedAt: Date;
-  lastWatered?: Date;
-}
+type Task = Database['public']['Tables']['tasks']['Row'];
+type Plant = Database['public']['Tables']['plants']['Row'];
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
 export function useTaskGarden() {
+  const { user, profile } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [plants, setPlants] = useState<Plant[]>([]);
-  const [compost, setCompost] = useState(0);
-  const [level, setLevel] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize garden state from blockchain
+  // Load garden data from Supabase
   useEffect(() => {
-    initializeGarden();
-  }, []);
+    if (user) {
+      loadGardenData();
+    }
+  }, [user]);
 
-  const initializeGarden = async () => {
+  const loadGardenData = async () => {
+    if (!user) return;
+    
     try {
       setIsLoading(true);
       
-      // Initialize smart contract connection
-      await smartContractService.initialize();
+      // Load tasks and plants from Supabase
+      const [tasksData, plantsData] = await Promise.all([
+        supabaseService.getTasks(user.id),
+        supabaseService.getPlants(user.id),
+      ]);
       
-      // Load user's garden state from blockchain
-      const gardenState = await smartContractService.getGardenState();
-      
-      setCompost(gardenState.compost);
-      setLevel(gardenState.level);
-      
-      // Load tasks and plants (in a real app, this would come from storage + blockchain)
-      loadInitialData();
-      
+      setTasks(tasksData);
+      setPlants(plantsData);
     } catch (error) {
-      console.error('Failed to initialize garden:', error);
-      // Fall back to local state
-      loadInitialData();
+      console.error('Failed to load garden data:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loadInitialData = () => {
-    // Load some sample data
-    setTasks([
-      {
-        id: '1',
-        title: 'Morning workout',
-        description: 'Complete 30-minute cardio session',
-        priority: 'high',
-        category: 'health',
-        completed: false,
-        plantType: 'tree',
-        compostReward: 15,
-        createdAt: new Date(),
-      },
-      {
-        id: '2',
-        title: 'Review project proposal',
-        description: 'Read through and provide feedback',
-        priority: 'medium',
-        category: 'work',
-        completed: true,
-        plantType: 'flower',
-        compostReward: 10,
-        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        completedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      },
-    ]);
-
-    setPlants([
-      {
-        id: '1',
-        taskId: '2',
-        type: 'flower',
-        growth: 90,
-        position: { x: 200, y: 300 },
-        plantedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      },
-    ]);
-
-    setCompost(128);
-    setLevel(8);
-  };
-
   const completeTask = async (taskId: string) => {
+    if (!user) return;
+    
     try {
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
 
-      // Update local state immediately for UX
+      // Complete task in Supabase
+      const completedTask = await supabaseService.completeTask(taskId);
+      
+      // Update local state
       setTasks(tasks.map(t => 
-        t.id === taskId 
-          ? { ...t, completed: true, completedAt: new Date() }
-          : t
+        t.id === taskId ? completedTask : t
       ));
-
-      // Submit to blockchain
-      const result = await smartContractService.completeTaskOnChain({
-        taskId: task.id,
-        category: task.category,
-        priority: task.priority,
+      
+      // Plant a new plant in the garden
+      const newPlant = await supabaseService.plantSeed(user.id, {
+        task_id: taskId,
+        type: task.plant_type as 'sprout' | 'sapling' | 'flower' | 'tree',
+        growth: 0,
+        position_x: Math.floor(Math.random() * 200 + 50),
+        position_y: Math.floor(Math.random() * 200 + 150),
+        planted_at: new Date().toISOString(),
+        last_watered: null,
       });
-
-      if (result.success) {
-        // Update compost count
-        setCompost(prev => prev + result.compostEarned);
-        
-        // Plant a new plant in the garden
-        const newPlant: Plant = {
-          id: Date.now().toString(),
-          taskId: task.id,
-          type: task.plantType,
-          growth: 0,
-          position: { 
-            x: Math.random() * 200 + 50, 
-            y: Math.random() * 200 + 150 
-          },
-          plantedAt: new Date(),
-        };
-        
-        setPlants(prev => [...prev, newPlant]);
-        
-        // Update task with blockchain hash
-        setTasks(tasks.map(t => 
-          t.id === taskId 
-            ? { ...t, blockchainHash: result.transactionHash }
-            : t
-        ));
+      
+      setPlants(prev => [...prev, newPlant]);
+      
+      // Update user's compost and stats
+      if (profile) {
+        await supabaseService.updateProfile(user.id, {
+          compost: profile.compost + task.compost_reward,
+          total_tasks: profile.total_tasks + 1,
+          plants_grown: profile.plants_grown + 1,
+        });
       }
+      
     } catch (error) {
       console.error('Failed to complete task:', error);
-      // Revert local state if blockchain submission fails
-      setTasks(tasks.map(t => 
-        t.id === taskId 
-          ? { ...t, completed: false, completedAt: undefined }
-          : t
-      ));
+      throw error;
     }
   };
 
-  const addTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'completed' | 'plantType' | 'compostReward'>) => {
-    const task: Task = {
-      ...taskData,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-      completed: false,
-      plantType: taskData.priority === 'high' ? 'tree' : 
-                 taskData.priority === 'medium' ? 'flower' : 'sprout',
-      compostReward: taskData.priority === 'high' ? 15 : 
-                     taskData.priority === 'medium' ? 10 : 5,
-    };
+  const addTask = async (taskData: {
+    title: string;
+    description: string;
+    priority: 'low' | 'medium' | 'high';
+    category: 'work' | 'personal' | 'health' | 'learning';
+    due_date?: string;
+  }) => {
+    if (!user) return;
+    
+    try {
+      const plantType = taskData.priority === 'high' ? 'tree' : 
+                       taskData.priority === 'medium' ? 'flower' : 'sprout';
+      const compostReward = taskData.priority === 'high' ? 15 : 
+                           taskData.priority === 'medium' ? 10 : 5;
+      
+      const task = await supabaseService.createTask(user.id, {
+        ...taskData,
+        plant_type: plantType,
+        compost_reward: compostReward,
+        completed: false,
+        completed_at: null,
+        blockchain_hash: null,
+      });
 
-    setTasks(prev => [task, ...prev]);
-    return task;
+      setTasks(prev => [task, ...prev]);
+      return task;
+    } catch (error) {
+      console.error('Failed to add task:', error);
+      throw error;
+    }
   };
 
   const recordFocusSession = async (sessionData: {
     duration: number;
     distractionsCount: number;
   }) => {
+    if (!user) return;
+    
     try {
-      const result = await smartContractService.recordFocusSession({
-        duration: sessionData.duration,
-        startTime: new Date(Date.now() - sessionData.duration * 1000),
-        endTime: new Date(),
-        distractionsCount: sessionData.distractionsCount,
+      const session = await supabaseService.createFocusSession(user.id, {
+        duration_minutes: Math.floor(sessionData.duration / 60),
+        completed: true,
+        distractions_count: sessionData.distractionsCount,
+        session_type: 'focus',
+        compost_earned: Math.floor(sessionData.duration / 60) * 2,
+        plant_growth_bonus: 10,
+        blockchain_hash: null,
+        zktls_proof: null,
+        started_at: new Date(Date.now() - sessionData.duration * 1000).toISOString(),
+        completed_at: new Date().toISOString(),
       });
 
-      if (result.success) {
-        setCompost(prev => prev + result.compostEarned);
-        
-        // Grow existing plants
-        setPlants(prev => prev.map(plant => ({
-          ...plant,
-          growth: Math.min(100, plant.growth + result.plantGrowth),
-        })));
+      // Update profile stats
+      if (profile) {
+        await supabaseService.updateProfile(user.id, {
+          compost: profile.compost + session.compost_earned,
+          focus_hours: profile.focus_hours + Math.floor(sessionData.duration / 3600),
+        });
       }
 
-      return result;
+      // Grow existing plants
+      const updatedPlants = await Promise.all(
+        plants.map(async (plant) => {
+          const newGrowth = Math.min(100, plant.growth + session.plant_growth_bonus);
+          return await supabaseService.updatePlantGrowth(plant.id, newGrowth);
+        })
+      );
+      
+      setPlants(updatedPlants);
+      
+      return session;
     } catch (error) {
       console.error('Failed to record focus session:', error);
       throw error;
@@ -209,11 +164,12 @@ export function useTaskGarden() {
   return {
     tasks,
     plants,
-    compost,
-    level,
+    compost: profile?.compost || 0,
+    level: profile?.level || 1,
     isLoading,
     completeTask,
     addTask,
     recordFocusSession,
+    profile,
   };
 }

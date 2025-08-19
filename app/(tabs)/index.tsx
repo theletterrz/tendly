@@ -12,48 +12,26 @@ import { Sprout, Sun, Cloud, CloudRain, Droplets } from 'lucide-react-native';
 import { GardenPlant } from '@/components/GardenPlant';
 import { WeatherMood } from '@/components/WeatherMood';
 import { CompostCounter } from '@/components/CompostCounter';
+import { useTaskGarden } from '@/hooks/useTaskGarden';
+import { useAuth } from '@/hooks/useAuth';
 
 const { width } = Dimensions.get('window');
 
-interface Plant {
-  id: string;
-  type: 'sprout' | 'sapling' | 'flower' | 'tree';
-  taskName: string;
-  growth: number;
-  position: { x: number; y: number };
-  planted: Date;
-}
-
 export default function GardenScreen() {
-  const [plants, setPlants] = useState<Plant[]>([
-    {
-      id: '1',
-      type: 'sapling',
-      taskName: 'Morning workout',
-      growth: 65,
-      position: { x: 100, y: 200 },
-      planted: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: '2',
-      type: 'flower',
-      taskName: 'Read for 30 mins',
-      growth: 90,
-      position: { x: 200, y: 300 },
-      planted: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: '3',
-      type: 'sprout',
-      taskName: 'Clean desk',
-      growth: 25,
-      position: { x: 150, y: 350 },
-      planted: new Date(),
-    },
-  ]);
+  const { plants, compost, level, tasks, profile } = useTaskGarden();
+  const { updateProfile } = useAuth();
+  
+  const [mood, setMood] = useState<'sunny' | 'cloudy' | 'rainy'>(profile?.mood || 'sunny');
 
-  const [mood, setMood] = useState<'sunny' | 'cloudy' | 'rainy'>('sunny');
-  const [compost, setCompost] = useState(128);
+  const handleMoodChange = async (newMood: 'sunny' | 'cloudy' | 'rainy') => {
+    setMood(newMood);
+    if (updateProfile) {
+      await updateProfile({ mood: newMood });
+    }
+  };
+
+  const completedTasks = tasks.filter(task => task.completed);
+  const pendingTasks = tasks.filter(task => !task.completed);
 
   return (
     <View style={styles.container}>
@@ -72,7 +50,7 @@ export default function GardenScreen() {
           </View>
 
           {/* Weather Mood */}
-          <WeatherMood mood={mood} onMoodChange={setMood} />
+          <WeatherMood mood={mood} onMoodChange={handleMoodChange} />
 
           {/* Garden Area */}
           <View style={styles.gardenContainer}>
@@ -82,11 +60,18 @@ export default function GardenScreen() {
               {plants.map((plant) => (
                 <GardenPlant
                   key={plant.id}
-                  plant={plant}
+                  plant={{
+                    id: plant.id,
+                    type: plant.type,
+                    taskName: tasks.find(t => t.id === plant.task_id)?.title || 'Unknown task',
+                    growth: plant.growth,
+                    position: { x: plant.position_x, y: plant.position_y },
+                    planted: new Date(plant.planted_at),
+                  }}
                   style={{
                     ...styles.plantPosition,
-                    left: plant.position.x,
-                    top: plant.position.y,
+                    left: plant.position_x,
+                    top: plant.position_y,
                   }}
                 />
               ))}
@@ -123,11 +108,11 @@ export default function GardenScreen() {
               <Text style={styles.statLabel}>Plants</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>7</Text>
+              <Text style={styles.statNumber}>{profile?.current_streak || 0}</Text>
               <Text style={styles.statLabel}>Day Streak</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>15</Text>
+              <Text style={styles.statNumber}>{profile?.focus_hours || 0}</Text>
               <Text style={styles.statLabel}>Focus Hours</Text>
             </View>
           </View>
