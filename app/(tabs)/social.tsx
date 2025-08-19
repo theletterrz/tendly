@@ -2,24 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Heart, MessageCircle, Share2, Trophy, Star, Users } from 'lucide-react-native';
-
-interface GardenPost {
-  id: string;
-  user: {
-    name: string;
-    avatar: string;
-    level: number;
-  };
-  achievement: string;
-  gardenImage: string;
-  likes: number;
-  comments: number;
-  isLiked: boolean;
-  timestamp: Date;
-}
+import { useAuth } from '@/hooks/useAuth';
 
 export default function SocialScreen() {
-  const [posts, setPosts] = useState<GardenPost[]>([
+  const { profile } = useAuth();
+  
+  // Sample posts - in real app, these would come from Supabase
+  const [posts, setPosts] = useState([
     {
       id: '1',
       user: {
@@ -132,7 +121,7 @@ export default function SocialScreen() {
             <View style={styles.leaderboardList}>
               {[
                 { name: 'Emma Watson', level: 15, sessions: 28, rank: 1 },
-                { name: 'You', level: 8, sessions: 13, rank: 2 },
+                { name: profile?.display_name || 'You', level: profile?.level || 1, sessions: 13, rank: 2 },
                 { name: 'John Doe', level: 11, sessions: 12, rank: 3 },
               ].map((leader, index) => (
                 <View key={index} style={styles.leaderItem}>
