@@ -2,12 +2,17 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Settings, Trophy, Star, Calendar, Zap, Leaf, Crown, Gift } from 'lucide-react-native';
-import { useAuth } from '@/hooks/useAuth';
-import { useTaskGarden } from '@/hooks/useTaskGarden';
 
 export default function ProfileScreen() {
-  const { profile, signOut } = useAuth();
-  const { compost, level } = useTaskGarden();
+  const [stats] = useState({
+    level: 8,
+    compost: 128,
+    totalTasks: 142,
+    focusHours: 45,
+    streak: 7,
+    plantsGrown: 28,
+    rareSeeds: 3,
+  });
 
   const [achievements] = useState([
     { id: '1', name: 'First Sprout', description: 'Completed your first task', icon: '🌱', unlocked: true },
@@ -17,14 +22,6 @@ export default function ProfileScreen() {
     { id: '5', name: 'Garden Guardian', description: 'Complete 500 tasks', icon: '🛡️', unlocked: false },
     { id: '6', name: 'Zen Master', description: 'Complete 200 focus sessions', icon: '☯️', unlocked: false },
   ]);
-
-  if (!profile) {
-    return (
-      <View style={styles.container}>
-        <Text>Loading profile...</Text>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
@@ -37,21 +34,19 @@ export default function ProfileScreen() {
           <View style={styles.header}>
             <View style={styles.profileSection}>
               <Image
-                source={{ 
-                  uri: profile.avatar_url || 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop' 
-                }}
+                source={{ uri: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop' }}
                 style={styles.avatar}
               />
               <View style={styles.profileInfo}>
-                <Text style={styles.name}>{profile.display_name || 'Garden Keeper'}</Text>
+                <Text style={styles.name}>Garden Keeper</Text>
                 <View style={styles.levelContainer}>
                   <Star size={16} color="#F59E0B" />
-                  <Text style={styles.level}>Level {profile.level}</Text>
+                  <Text style={styles.level}>Level {stats.level}</Text>
                 </View>
                 <Text style={styles.subtitle}>Cultivating focus and growth</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.settingsButton} onPress={signOut}>
+            <TouchableOpacity style={styles.settingsButton}>
               <Settings size={24} color="#8B7355" />
             </TouchableOpacity>
           </View>
@@ -60,25 +55,25 @@ export default function ProfileScreen() {
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
               <Leaf size={24} color="#87A96B" />
-              <Text style={styles.statNumber}>{profile.compost}</Text>
+              <Text style={styles.statNumber}>{stats.compost}</Text>
               <Text style={styles.statLabel}>Compost</Text>
             </View>
             
             <View style={styles.statCard}>
               <Calendar size={24} color="#87A96B" />
-              <Text style={styles.statNumber}>{profile.current_streak}</Text>
+              <Text style={styles.statNumber}>{stats.streak}</Text>
               <Text style={styles.statLabel}>Day Streak</Text>
             </View>
             
             <View style={styles.statCard}>
               <Zap size={24} color="#87A96B" />
-              <Text style={styles.statNumber}>{profile.focus_hours}</Text>
+              <Text style={styles.statNumber}>{stats.focusHours}</Text>
               <Text style={styles.statLabel}>Focus Hours</Text>
             </View>
             
             <View style={styles.statCard}>
               <Trophy size={24} color="#87A96B" />
-              <Text style={styles.statNumber}>{profile.plants_grown}</Text>
+              <Text style={styles.statNumber}>{stats.plantsGrown}</Text>
               <Text style={styles.statLabel}>Plants Grown</Text>
             </View>
           </View>
@@ -96,13 +91,13 @@ export default function ProfileScreen() {
               <TouchableOpacity style={styles.seedCard}>
                 <Text style={styles.seedEmoji}>🌺</Text>
                 <Text style={styles.seedName}>Rare Orchid</Text>
-                <Text style={styles.seedCount}>{profile.rare_seeds}</Text>
+                <Text style={styles.seedCount}>2</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.seedCard}>
                 <Text style={styles.seedEmoji}>🌳</Text>
                 <Text style={styles.seedName}>Ancient Oak</Text>
-                <Text style={styles.seedCount}>{Math.floor(profile.rare_seeds / 2)}</Text>
+                <Text style={styles.seedCount}>1</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.shopCard}>

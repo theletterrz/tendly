@@ -2,10 +2,57 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus, CircleCheck as CheckCircle2, Circle, Calendar, Flag, Leaf, Clock } from 'lucide-react-native';
-import { useTaskGarden } from '@/hooks/useTaskGarden';
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high';
+  category: 'work' | 'personal' | 'health' | 'learning';
+  completed: boolean;
+  plantType: 'sprout' | 'flower' | 'tree';
+  compostReward: number;
+  createdAt: Date;
+  dueDate?: Date;
+}
 
 export default function TasksScreen() {
-  const { tasks, completeTask, addTask } = useTaskGarden();
+  const [tasks, setTasks] = useState<Task[]>([
+    {
+      id: '1',
+      title: 'Morning workout',
+      description: 'Complete 30-minute cardio session',
+      priority: 'high',
+      category: 'health',
+      completed: false,
+      plantType: 'tree',
+      compostReward: 15,
+      createdAt: new Date(),
+      dueDate: new Date(Date.now() + 2 * 60 * 60 * 1000),
+    },
+    {
+      id: '2',
+      title: 'Review project proposal',
+      description: 'Read through and provide feedback',
+      priority: 'medium',
+      category: 'work',
+      completed: true,
+      plantType: 'flower',
+      compostReward: 10,
+      createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    },
+    {
+      id: '3',
+      title: 'Call mom',
+      description: 'Weekly check-in call',
+      priority: 'low',
+      category: 'personal',
+      completed: false,
+      plantType: 'sprout',
+      compostReward: 5,
+      createdAt: new Date(),
+    },
+  ]);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTask, setNewTask] = useState({
@@ -15,17 +62,30 @@ export default function TasksScreen() {
     category: 'personal' as const,
   });
 
-  const toggleTask = async (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (task && !task.completed) {
-      await completeTask(taskId);
-    }
+  const toggleTask = (taskId: string) => {
+    setTasks(tasks.map(task => 
+      task.id === taskId 
+        ? { ...task, completed: !task.completed }
+        : task
+    ));
   };
 
-  const handleAddTask = async () => {
+  const addTask = () => {
     if (!newTask.title.trim()) return;
 
-    await addTask(newTask);
+    const task: Task = {
+      id: Date.now().toString(),
+      title: newTask.title,
+      description: newTask.description,
+      priority: newTask.priority,
+      category: newTask.category,
+      completed: false,
+      plantType: newTask.priority === 'high' ? 'tree' : newTask.priority === 'medium' ? 'flower' : 'sprout',
+      compostReward: newTask.priority === 'high' ? 15 : newTask.priority === 'medium' ? 10 : 5,
+      createdAt: new Date(),
+    };
+
+    setTasks([task, ...tasks]);
     setNewTask({ title: '', description: '', priority: 'medium', category: 'personal' });
     setShowAddModal(false);
   };
@@ -107,13 +167,13 @@ export default function TasksScreen() {
                     <View style={styles.taskFooter}>
                       <View style={styles.rewardInfo}>
                         <Leaf size={14} color="#87A96B" />
-                        <Text style={styles.rewardText}>+{task.compost_reward} compost</Text>
+                        <Text style={styles.rewardText}>+{task.compostReward} compost</Text>
                       </View>
-                      {task.due_date && (
+                      {task.dueDate && (
                         <View style={styles.dueDate}>
                           <Clock size={12} color="#8B7355" />
                           <Text style={styles.dueText}>
-                            {new Date(task.due_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {task.dueDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </Text>
                         </View>
                       )}
@@ -143,7 +203,7 @@ export default function TasksScreen() {
                       <View style={styles.taskFooter}>
                         <View style={styles.rewardInfo}>
                           <Leaf size={14} color="#87A96B" />
-                          <Text style={styles.rewardText}>+{task.compost_reward} earned</Text>
+                          <Text style={styles.rewardText}>+{task.compostReward} earned</Text>
                         </View>
                       </View>
                     </View>
@@ -166,7 +226,7 @@ export default function TasksScreen() {
                 <Text style={styles.cancelButton}>Cancel</Text>
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Plant New Task</Text>
-              <TouchableOpacity onPress={handleAddTask}>
+              <TouchableOpacity onPress={addTask}>
                 <Text style={styles.saveButton}>Plant</Text>
               </TouchableOpacity>
             </View>
