@@ -1,9 +1,35 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Settings, Trophy, Star, Calendar, Zap, Leaf, Crown, Gift } from 'lucide-react-native';
+import {
+  Settings,
+  Trophy,
+  Star,
+  Calendar,
+  Zap,
+  Leaf,
+  Crown,
+  Gift,
+  LogIn,
+  LogOut,
+  Wallet,
+} from 'lucide-react-native';
+import {
+  useAbstraxionAccount,
+  useAbstraxionSigningClient,
+} from '@burnt-labs/abstraxion-react-native';
 
 export default function ProfileScreen() {
+  const { data: account, isConnected, isConnecting } = useAbstraxionAccount();
+  const { client, logout } = useAbstraxionSigningClient();
+
   const [stats] = useState({
     level: 8,
     compost: 128,
@@ -15,40 +41,144 @@ export default function ProfileScreen() {
   });
 
   const [achievements] = useState([
-    { id: '1', name: 'First Sprout', description: 'Completed your first task', icon: '🌱', unlocked: true },
-    { id: '2', name: 'Focus Master', description: 'Complete 50 focus sessions', icon: '🧘‍♀️', unlocked: true },
-    { id: '3', name: 'Green Thumb', description: 'Grow 25 plants', icon: '👍', unlocked: true },
-    { id: '4', name: 'Streak Warrior', description: 'Maintain a 30-day streak', icon: '🔥', unlocked: false },
-    { id: '5', name: 'Garden Guardian', description: 'Complete 500 tasks', icon: '🛡️', unlocked: false },
-    { id: '6', name: 'Zen Master', description: 'Complete 200 focus sessions', icon: '☯️', unlocked: false },
+    {
+      id: '1',
+      name: 'First Sprout',
+      description: 'Completed your first task',
+      icon: '🌱',
+      unlocked: true,
+    },
+    {
+      id: '2',
+      name: 'Focus Master',
+      description: 'Complete 50 focus sessions',
+      icon: '🧘‍♀️',
+      unlocked: true,
+    },
+    {
+      id: '3',
+      name: 'Green Thumb',
+      description: 'Grow 25 plants',
+      icon: '👍',
+      unlocked: true,
+    },
+    {
+      id: '4',
+      name: 'Streak Warrior',
+      description: 'Maintain a 30-day streak',
+      icon: '🔥',
+      unlocked: false,
+    },
+    {
+      id: '5',
+      name: 'Garden Guardian',
+      description: 'Complete 500 tasks',
+      icon: '🛡️',
+      unlocked: false,
+    },
+    {
+      id: '6',
+      name: 'Zen Master',
+      description: 'Complete 200 focus sessions',
+      icon: '☯️',
+      unlocked: false,
+    },
   ]);
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#E8F4E6', '#F5F1E8']}
-        style={styles.gradient}
-      >
+      <LinearGradient colors={['#E8F4E6', '#F5F1E8']} style={styles.gradient}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.profileSection}>
-              <Image
-                source={{ uri: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop' }}
-                style={styles.avatar}
-              />
+              {isConnected ? (
+                <View style={styles.connectedAvatar}>
+                  <Wallet size={32} color="#87A96B" />
+                </View>
+              ) : (
+                <View style={styles.disconnectedAvatar}>
+                  <Wallet size={32} color="#C4B59A" />
+                </View>
+              )}
               <View style={styles.profileInfo}>
-                <Text style={styles.name}>Garden Keeper</Text>
+                <Text style={styles.name}>
+                  {isConnected ? 'Garden Keeper' : 'Guest Gardener'}
+                </Text>
                 <View style={styles.levelContainer}>
                   <Star size={16} color="#F59E0B" />
                   <Text style={styles.level}>Level {stats.level}</Text>
                 </View>
-                <Text style={styles.subtitle}>Cultivating focus and growth</Text>
+                <Text style={styles.subtitle}>
+                  {isConnected
+                    ? 'Cultivating focus and growth'
+                    : 'Connect wallet to save progress'}
+                </Text>
               </View>
             </View>
             <TouchableOpacity style={styles.settingsButton}>
               <Settings size={24} color="#8B7355" />
             </TouchableOpacity>
+          </View>
+
+          {/* XION Wallet Connection */}
+          <View style={styles.walletSection}>
+            {!isConnected ? (
+              <View style={styles.walletCard}>
+                <View style={styles.walletHeader}>
+                  <Wallet size={24} color="#87A96B" />
+                  <Text style={styles.walletTitle}>Connect XION Wallet</Text>
+                </View>
+                <Text style={styles.walletDescription}>
+                  Connect your XION wallet to save your garden progress on-chain
+                  and earn verified achievements
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    styles.walletButton,
+                    isConnecting && styles.walletButtonDisabled,
+                  ]}
+                  disabled={isConnecting}
+                >
+                  <LogIn size={20} color="#F5F1E8" />
+                  <Text style={styles.walletButtonText}>
+                    {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.walletCard}>
+                <View style={styles.walletHeader}>
+                  <Wallet size={24} color="#87A96B" />
+                  <Text style={styles.walletTitle}>XION Wallet Connected</Text>
+                </View>
+                <View style={styles.walletInfo}>
+                  <Text style={styles.walletLabel}>Address:</Text>
+                  <Text style={styles.walletAddress}>
+                    {account?.bech32Address
+                      ? `${account.bech32Address.slice(
+                          0,
+                          12
+                        )}...${account.bech32Address.slice(-8)}`
+                      : 'Loading...'}
+                  </Text>
+                </View>
+                <View style={styles.walletActions}>
+                  <TouchableOpacity style={styles.explorerButton}>
+                    <Text style={styles.explorerButtonText}>
+                      View on Explorer
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.logoutButton}
+                    onPress={() => logout()}
+                  >
+                    <LogOut size={16} color="#D97757" />
+                    <Text style={styles.logoutButtonText}>Disconnect</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Stats Grid */}
@@ -58,19 +188,19 @@ export default function ProfileScreen() {
               <Text style={styles.statNumber}>{stats.compost}</Text>
               <Text style={styles.statLabel}>Compost</Text>
             </View>
-            
+
             <View style={styles.statCard}>
               <Calendar size={24} color="#87A96B" />
               <Text style={styles.statNumber}>{stats.streak}</Text>
               <Text style={styles.statLabel}>Day Streak</Text>
             </View>
-            
+
             <View style={styles.statCard}>
               <Zap size={24} color="#87A96B" />
               <Text style={styles.statNumber}>{stats.focusHours}</Text>
               <Text style={styles.statLabel}>Focus Hours</Text>
             </View>
-            
+
             <View style={styles.statCard}>
               <Trophy size={24} color="#87A96B" />
               <Text style={styles.statNumber}>{stats.plantsGrown}</Text>
@@ -87,19 +217,19 @@ export default function ProfileScreen() {
                 <Text style={styles.seedName}>Basic Seeds</Text>
                 <Text style={styles.seedCount}>∞</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity style={styles.seedCard}>
                 <Text style={styles.seedEmoji}>🌺</Text>
                 <Text style={styles.seedName}>Rare Orchid</Text>
                 <Text style={styles.seedCount}>2</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity style={styles.seedCard}>
                 <Text style={styles.seedEmoji}>🌳</Text>
                 <Text style={styles.seedName}>Ancient Oak</Text>
                 <Text style={styles.seedCount}>1</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity style={styles.shopCard}>
                 <Gift size={20} color="#87A96B" />
                 <Text style={styles.shopText}>Shop</Text>
@@ -116,32 +246,36 @@ export default function ProfileScreen() {
                   key={achievement.id}
                   style={[
                     styles.achievementCard,
-                    !achievement.unlocked && styles.lockedAchievement
+                    !achievement.unlocked && styles.lockedAchievement,
                   ]}
                 >
-                  <Text style={[
-                    styles.achievementIcon,
-                    !achievement.unlocked && styles.lockedIcon
-                  ]}>
+                  <Text
+                    style={[
+                      styles.achievementIcon,
+                      !achievement.unlocked && styles.lockedIcon,
+                    ]}
+                  >
                     {achievement.unlocked ? achievement.icon : '🔒'}
                   </Text>
                   <View style={styles.achievementContent}>
-                    <Text style={[
-                      styles.achievementName,
-                      !achievement.unlocked && styles.lockedText
-                    ]}>
+                    <Text
+                      style={[
+                        styles.achievementName,
+                        !achievement.unlocked && styles.lockedText,
+                      ]}
+                    >
                       {achievement.name}
                     </Text>
-                    <Text style={[
-                      styles.achievementDescription,
-                      !achievement.unlocked && styles.lockedText
-                    ]}>
+                    <Text
+                      style={[
+                        styles.achievementDescription,
+                        !achievement.unlocked && styles.lockedText,
+                      ]}
+                    >
                       {achievement.description}
                     </Text>
                   </View>
-                  {achievement.unlocked && (
-                    <Crown size={16} color="#F59E0B" />
-                  )}
+                  {achievement.unlocked && <Crown size={16} color="#F59E0B" />}
                 </View>
               ))}
             </View>
@@ -152,17 +286,41 @@ export default function ProfileScreen() {
             <Text style={styles.sectionTitle}>Blockchain Integration</Text>
             <View style={styles.blockchainCard}>
               <View style={styles.blockchainHeader}>
-                <Text style={styles.blockchainTitle}>XION Wallet</Text>
-                <View style={styles.statusBadge}>
-                  <Text style={styles.statusText}>Connected</Text>
+                <Text style={styles.blockchainTitle}>
+                  Achievement Verification
+                </Text>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    isConnected
+                      ? styles.connectedBadge
+                      : styles.disconnectedBadge,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusText,
+                      isConnected
+                        ? styles.connectedText
+                        : styles.disconnectedText,
+                    ]}
+                  >
+                    {isConnected ? 'Verified' : 'Offline'}
+                  </Text>
                 </View>
               </View>
               <Text style={styles.blockchainDescription}>
-                Your achievements are secured on-chain with zkTLS verification
+                {isConnected
+                  ? 'Your achievements are secured on-chain with zkTLS verification'
+                  : 'Connect your wallet to enable blockchain verification of achievements'}
               </Text>
-              <TouchableOpacity style={styles.blockchainButton}>
-                <Text style={styles.blockchainButtonText}>View on Explorer</Text>
-              </TouchableOpacity>
+              {isConnected && (
+                <TouchableOpacity style={styles.blockchainButton}>
+                  <Text style={styles.blockchainButtonText}>
+                    View Verified Achievements
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -203,6 +361,26 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#87A96B',
   },
+  connectedAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(135, 169, 107, 0.1)',
+    borderWidth: 3,
+    borderColor: '#87A96B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disconnectedAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(196, 181, 154, 0.1)',
+    borderWidth: 3,
+    borderColor: '#C4B59A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   profileInfo: {
     flex: 1,
   },
@@ -233,6 +411,102 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: 'rgba(229, 221, 208, 0.6)',
+  },
+  walletSection: {
+    marginBottom: 32,
+  },
+  walletCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(229, 221, 208, 0.6)',
+  },
+  walletHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  walletTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C5F41',
+  },
+  walletDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  walletButton: {
+    backgroundColor: '#87A96B',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  walletButtonDisabled: {
+    backgroundColor: '#C4B59A',
+    opacity: 0.7,
+  },
+  walletButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#F5F1E8',
+  },
+  walletInfo: {
+    backgroundColor: 'rgba(135, 169, 107, 0.05)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  walletLabel: {
+    fontSize: 12,
+    color: '#8B7355',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  walletAddress: {
+    fontSize: 14,
+    color: '#2C5F41',
+    fontWeight: '600',
+    fontFamily: 'monospace',
+  },
+  walletActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  explorerButton: {
+    flex: 1,
+    backgroundColor: 'rgba(135, 169, 107, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#87A96B',
+  },
+  explorerButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#87A96B',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(217, 119, 87, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#D97757',
+  },
+  logoutButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#D97757',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -381,8 +655,19 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    color: '#87A96B',
     fontWeight: '500',
+  },
+  connectedBadge: {
+    backgroundColor: 'rgba(135, 169, 107, 0.1)',
+  },
+  disconnectedBadge: {
+    backgroundColor: 'rgba(196, 181, 154, 0.1)',
+  },
+  connectedText: {
+    color: '#87A96B',
+  },
+  disconnectedText: {
+    color: '#8B7355',
   },
   blockchainDescription: {
     fontSize: 14,
