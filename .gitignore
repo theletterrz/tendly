@@ -1,51 +1,58 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+# Node modules
+/node_modules/
 
-# dependencies
-node_modules/
-
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
-
-# Native
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# typescript
-*.tsbuildinfo
-
-app-example
-
-/android/
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 # Environment files
-/.env
-/.env.*
+.env
+.env.*
 !.env.example
 
 # iOS / Xcode
-/ios/
-/ios/Pods/
-/ios/build/
-/ios/*.xcworkspace
-/ios/*.xcodeproj
+ios/build/
+ios/Pods/
+ios/DerivedData/
+ios/*.xcworkspace
+ios/*.xcodeproj
 *.xcuserdatad
-xcuserdata/
+*.xcuserdata
 *.xcuserstate
-DerivedData/
-.DS_Store
-*.pem
+
+# Android / Gradle
+android/.gradle/
+android/.idea/
+android/local.properties
+android/app/build/
+*.iml
+.gradle
+/captures/
+.externalNativeBuild
+
+# Misc
+*.DS_Store
+*.lock
+*.keystore
+*.jks
+
+# React Native generated files
+.expo/
+.expo-shared/
+dist/
+build/
+coverage/
+
+# Metro cache
+.metro/
+.packager/
+
+# VSCode
+.vscode/
+
+# Testing
+/coverage/
+jest-cache/
+jest-test-results.json
