@@ -15,7 +15,6 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 
 import { AbstraxionProvider } from '@burnt-labs/abstraxion-react-native';
 
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 
 import { Buffer } from 'buffer';
@@ -35,7 +34,7 @@ const treasuryConfig = {
 };
 
 export default function RootLayout() {
-  const systemColorScheme = useColorScheme();
+  // const systemColorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
@@ -53,21 +52,11 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <AbstraxionProvider config={treasuryConfig}>
-        <NavigationThemeProvider
-          value={systemColorScheme === 'dark' ? DarkTheme : DefaultTheme}
-        >
-          <View
-            style={{
-              width: Platform.OS === 'web' ? 460 : '100%',
-              height: '100%',
-              alignSelf: 'center',
-            }}
-          >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
-          </View>
-          <StatusBar style="auto" />
-        </NavigationThemeProvider>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+        <StatusBar style="auto" />
       </AbstraxionProvider>
     </ThemeProvider>
   );

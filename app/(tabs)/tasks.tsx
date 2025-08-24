@@ -1,60 +1,37 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  Alert,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Plus, CircleCheck as CheckCircle2, Circle, Calendar, Flag, Leaf, Clock } from 'lucide-react-native';
+import {
+  Plus,
+  CircleCheck as CheckCircle2,
+  Circle,
+  Calendar,
+  Flag,
+  Leaf,
+  Clock,
+  Edit,
+  Trash2,
+  Archive,
+} from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Task } from '@/types/xion';
 
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high';
-  category: 'work' | 'personal' | 'health' | 'learning';
-  completed: boolean;
-  plantType: 'sprout' | 'flower' | 'tree';
-  compostReward: number;
-  createdAt: Date;
-  dueDate?: Date;
-}
+const TASKS_STORAGE_KEY = '@tendly_tasks';
 
 export default function TasksScreen() {
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: '1',
-      title: 'Morning workout',
-      description: 'Complete 30-minute cardio session',
-      priority: 'high',
-      category: 'health',
-      completed: false,
-      plantType: 'tree',
-      compostReward: 15,
-      createdAt: new Date(),
-      dueDate: new Date(Date.now() + 2 * 60 * 60 * 1000),
-    },
-    {
-      id: '2',
-      title: 'Review project proposal',
-      description: 'Read through and provide feedback',
-      priority: 'medium',
-      category: 'work',
-      completed: true,
-      plantType: 'flower',
-      compostReward: 10,
-      createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    },
-    {
-      id: '3',
-      title: 'Call mom',
-      description: 'Weekly check-in call',
-      priority: 'low',
-      category: 'personal',
-      completed: false,
-      plantType: 'sprout',
-      compostReward: 5,
-      createdAt: new Date(),
-    },
-  ]);
-
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -62,72 +39,346 @@ export default function TasksScreen() {
     category: 'personal' as const,
   });
 
-  const toggleTask = (taskId: string) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId 
-        ? { ...task, completed: !task.completed }
-        : task
-    ));
+  // Load tasks from storage on component mount
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const loadTasks = async () => {
+    try {
+      setLoading(true);
+      const storedTasks = await AsyncStorage.getItem(TASKS_STORAGE_KEY);
+      if (storedTasks) {
+        const parsedTasks = JSON.parse(storedTasks).map((task: any) => ({
+          ...task,
+          createdAt: new Date(task.createdAt),
+          completedAt: task.completedAt
+            ? new Date(task.completedAt)
+            : undefined,
+          dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
+        }));
+        setTasks(parsedTasks);
+      } else {
+        // Load sample data for new users
+        const sampleTasks: Task[] = [
+          {
+            id: '1',
+            title: 'Morning workout',
+            description: 'Complete 30-minute cardio session',
+            priority: 'high',
+            category: 'health',
+            completed: false,
+            plantType: 'tree',
+            compostReward: 15,
+            createdAt: new Date(),
+            dueDate: new Date(Date.now() + 2 * 60 * 60 * 1000),
+            archived: false,
+          },
+          {
+            id: '2',
+            title: 'Review project proposal',
+            description: 'Read through and provide feedback',
+            priority: 'medium',
+            category: 'work',
+            completed: true,
+            plantType: 'flower',
+            compostReward: 10,
+            createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+            completedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+            archived: false,
+          },
+          {
+            id: '3',
+            title: 'Call mom',
+            description: 'Weekly check-in call',
+            priority: 'low',
+            category: 'personal',
+            completed: false,
+            plantType: 'sprout',
+            compostReward: 5,
+            createdAt: new Date(),
+            archived: false,
+          },
+        ];
+        setTasks(sampleTasks);
+        await saveTasks(sampleTasks);
+      }
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+      Alert.alert('Error', 'Failed to load tasks');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const addTask = () => {
-    if (!newTask.title.trim()) return;
+  const saveTasks = async (tasksToSave: Task[]) => {
+    try {
+      await AsyncStorage.setItem(
+        TASKS_STORAGE_KEY,
+        JSON.stringify(tasksToSave)
+      );
+    } catch (error) {
+      console.error('Error saving tasks:', error);
+      Alert.alert('Error', 'Failed to save tasks');
+    }
+  };
 
-    const task: Task = {
-      id: Date.now().toString(),
-      title: newTask.title,
-      description: newTask.description,
-      priority: newTask.priority,
-      category: newTask.category,
-      completed: false,
-      plantType: newTask.priority === 'high' ? 'tree' : newTask.priority === 'medium' ? 'flower' : 'sprout',
-      compostReward: newTask.priority === 'high' ? 15 : newTask.priority === 'medium' ? 10 : 5,
-      createdAt: new Date(),
-    };
+  // Create new task
+  const createTask = async () => {
+    if (!newTask.title.trim()) {
+      Alert.alert('Error', 'Task title is required');
+      return;
+    }
 
-    setTasks([task, ...tasks]);
-    setNewTask({ title: '', description: '', priority: 'medium', category: 'personal' });
+    try {
+      const task: Task = {
+        id: Date.now().toString(),
+        title: newTask.title.trim(),
+        description: newTask.description.trim(),
+        priority: newTask.priority,
+        category: newTask.category,
+        completed: false,
+        plantType:
+          newTask.priority === 'high'
+            ? 'tree'
+            : newTask.priority === 'medium'
+            ? 'flower'
+            : 'sprout',
+        compostReward:
+          newTask.priority === 'high'
+            ? 15
+            : newTask.priority === 'medium'
+            ? 10
+            : 5,
+        createdAt: new Date(),
+        archived: false,
+      };
+
+      const updatedTasks = [task, ...tasks];
+      setTasks(updatedTasks);
+      await saveTasks(updatedTasks);
+
+      // Reset form
+      setNewTask({
+        title: '',
+        description: '',
+        priority: 'medium',
+        category: 'personal',
+      });
+      setShowAddModal(false);
+
+      Alert.alert('Success', 'Task created successfully!');
+    } catch (error) {
+      console.error('Error creating task:', error);
+      Alert.alert('Error', 'Failed to create task');
+    }
+  };
+
+  // Update existing task
+  const updateTask = async () => {
+    if (!editingTask || !newTask.title.trim()) {
+      Alert.alert('Error', 'Task title is required');
+      return;
+    }
+
+    try {
+      const updatedTask: Task = {
+        ...editingTask,
+        title: newTask.title.trim(),
+        description: newTask.description.trim(),
+        priority: newTask.priority,
+        category: newTask.category,
+        plantType:
+          newTask.priority === 'high'
+            ? 'tree'
+            : newTask.priority === 'medium'
+            ? 'flower'
+            : 'sprout',
+        compostReward:
+          newTask.priority === 'high'
+            ? 15
+            : newTask.priority === 'medium'
+            ? 10
+            : 5,
+      };
+
+      const updatedTasks = tasks.map((task) =>
+        task.id === editingTask.id ? updatedTask : task
+      );
+
+      setTasks(updatedTasks);
+      await saveTasks(updatedTasks);
+
+      // Reset form
+      setNewTask({
+        title: '',
+        description: '',
+        priority: 'medium',
+        category: 'personal',
+      });
+      setEditingTask(null);
+      setShowAddModal(false);
+
+      Alert.alert('Success', 'Task updated successfully!');
+    } catch (error) {
+      console.error('Error updating task:', error);
+      Alert.alert('Error', 'Failed to update task');
+    }
+  };
+
+  // Toggle task completion
+  const toggleTaskCompletion = async (taskId: string) => {
+    try {
+      const updatedTasks = tasks.map((task) => {
+        if (task.id === taskId) {
+          const isCompleting = !task.completed;
+          return {
+            ...task,
+            completed: isCompleting,
+            completedAt: isCompleting ? new Date() : undefined,
+          };
+        }
+        return task;
+      });
+
+      setTasks(updatedTasks);
+      await saveTasks(updatedTasks);
+
+      const task = tasks.find((t) => t.id === taskId);
+      if (task && !task.completed) {
+        Alert.alert(
+          'Great job!',
+          `You earned ${task.compostReward} compost! 🌱`
+        );
+      }
+    } catch (error) {
+      console.error('Error toggling task:', error);
+      Alert.alert('Error', 'Failed to update task');
+    }
+  };
+
+  // Archive task
+  const archiveTask = async (taskId: string) => {
+    try {
+      const updatedTasks = tasks.map((task) =>
+        task.id === taskId ? { ...task, archived: true } : task
+      );
+
+      setTasks(updatedTasks);
+      await saveTasks(updatedTasks);
+
+      Alert.alert('Success', 'Task archived successfully!');
+    } catch (error) {
+      console.error('Error archiving task:', error);
+      Alert.alert('Error', 'Failed to archive task');
+    }
+  };
+
+  // Delete task
+  const deleteTask = async (taskId: string) => {
+    Alert.alert(
+      'Delete Task',
+      'Are you sure you want to delete this task? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const updatedTasks = tasks.filter((task) => task.id !== taskId);
+              setTasks(updatedTasks);
+              await saveTasks(updatedTasks);
+              Alert.alert('Success', 'Task deleted successfully!');
+            } catch (error) {
+              console.error('Error deleting task:', error);
+              Alert.alert('Error', 'Failed to delete task');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Open edit modal
+  const openEditModal = (task: Task) => {
+    setEditingTask(task);
+    setNewTask({
+      title: task.title,
+      description: task.description || '',
+      priority: task.priority,
+      category: task.category,
+    });
+    setShowAddModal(true);
+  };
+
+  // Close modal and reset form
+  const closeModal = () => {
     setShowAddModal(false);
+    setEditingTask(null);
+    setNewTask({
+      title: '',
+      description: '',
+      priority: 'medium',
+      category: 'personal',
+    });
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return '#D97757';
-      case 'medium': return '#F59E0B';
-      case 'low': return '#87A96B';
-      default: return '#87A96B';
+      case 'high':
+        return '#D97757';
+      case 'medium':
+        return '#F59E0B';
+      case 'low':
+        return '#87A96B';
+      default:
+        return '#87A96B';
     }
   };
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'work': return '💼';
-      case 'health': return '💪';
-      case 'learning': return '📚';
-      case 'personal': return '🏠';
-      default: return '📝';
+      case 'work':
+        return '💼';
+      case 'health':
+        return '💪';
+      case 'learning':
+        return '📚';
+      case 'personal':
+        return '🏠';
+      default:
+        return '📝';
     }
   };
 
-  const completedTasks = tasks.filter(task => task.completed);
-  const pendingTasks = tasks.filter(task => !task.completed);
+  // Filter out archived tasks for display
+  const activeTasks = tasks.filter((task) => !task.archived);
+  const completedTasks = activeTasks.filter((task) => task.completed);
+  const pendingTasks = activeTasks.filter((task) => !task.completed);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text style={styles.loadingText}>Loading tasks...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#E8F4E6', '#F5F1E8']}
-        style={styles.gradient}
-      >
+      <LinearGradient colors={['#E8F4E6', '#F5F1E8']} style={styles.gradient}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Header */}
           <View style={styles.header}>
             <View>
               <Text style={styles.title}>Task Garden</Text>
               <Text style={styles.subtitle}>
-                {pendingTasks.length} tasks to plant • {completedTasks.length} growing
+                {pendingTasks.length} tasks to plant • {completedTasks.length}{' '}
+                growing
               </Text>
             </View>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.addButton}
               onPress={() => setShowAddModal(true)}
             >
@@ -138,50 +389,91 @@ export default function TasksScreen() {
           {/* Pending Tasks */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Ready to Plant 🌱</Text>
-            {pendingTasks.map((task) => (
-              <TouchableOpacity
-                key={task.id}
-                style={styles.taskCard}
-                onPress={() => toggleTask(task.id)}
-              >
-                <View style={styles.taskLeft}>
-                  <Circle size={24} color="#87A96B" strokeWidth={2} />
-                  <View style={styles.taskContent}>
-                    <View style={styles.taskHeader}>
-                      <Text style={styles.taskTitle}>{task.title}</Text>
-                      <View style={styles.taskMeta}>
-                        <Text style={styles.categoryEmoji}>
-                          {getCategoryIcon(task.category)}
+            {pendingTasks.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No pending tasks</Text>
+                <Text style={styles.emptySubtext}>
+                  Create a new task to start growing your garden!
+                </Text>
+              </View>
+            ) : (
+              pendingTasks.map((task) => (
+                <View key={task.id} style={styles.taskCard}>
+                  <TouchableOpacity
+                    style={styles.taskLeft}
+                    onPress={() => toggleTaskCompletion(task.id)}
+                  >
+                    <Circle size={24} color="#87A96B" strokeWidth={2} />
+                    <View style={styles.taskContent}>
+                      <View style={styles.taskHeader}>
+                        <Text style={styles.taskTitle}>{task.title}</Text>
+                        <View style={styles.taskMeta}>
+                          <Text style={styles.categoryEmoji}>
+                            {getCategoryIcon(task.category)}
+                          </Text>
+                          <View
+                            style={[
+                              styles.priorityIndicator,
+                              {
+                                backgroundColor: getPriorityColor(
+                                  task.priority
+                                ),
+                              },
+                            ]}
+                          />
+                        </View>
+                      </View>
+                      {task.description && (
+                        <Text style={styles.taskDescription}>
+                          {task.description}
                         </Text>
-                        <View 
-                          style={[
-                            styles.priorityIndicator, 
-                            { backgroundColor: getPriorityColor(task.priority) }
-                          ]} 
-                        />
-                      </View>
-                    </View>
-                    {task.description && (
-                      <Text style={styles.taskDescription}>{task.description}</Text>
-                    )}
-                    <View style={styles.taskFooter}>
-                      <View style={styles.rewardInfo}>
-                        <Leaf size={14} color="#87A96B" />
-                        <Text style={styles.rewardText}>+{task.compostReward} compost</Text>
-                      </View>
-                      {task.dueDate && (
-                        <View style={styles.dueDate}>
-                          <Clock size={12} color="#8B7355" />
-                          <Text style={styles.dueText}>
-                            {task.dueDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      )}
+                      <View style={styles.taskFooter}>
+                        <View style={styles.rewardInfo}>
+                          <Leaf size={14} color="#87A96B" />
+                          <Text style={styles.rewardText}>
+                            +{task.compostReward} compost
                           </Text>
                         </View>
-                      )}
+                        {task.dueDate && (
+                          <View style={styles.dueDate}>
+                            <Clock size={12} color="#8B7355" />
+                            <Text style={styles.dueText}>
+                              {task.dueDate.toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
+                  </TouchableOpacity>
+
+                  {/* Task Actions */}
+                  <View style={styles.taskActions}>
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() => openEditModal(task)}
+                    >
+                      <Edit size={16} color="#8B7355" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() => archiveTask(task.id)}
+                    >
+                      <Archive size={16} color="#8B7355" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() => deleteTask(task.id)}
+                    >
+                      <Trash2 size={16} color="#D97757" />
+                    </TouchableOpacity>
                   </View>
                 </View>
-              </TouchableOpacity>
-            ))}
+              ))
+            )}
           </View>
 
           {/* Completed Tasks */}
@@ -189,12 +481,14 @@ export default function TasksScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Growing Strong 🌿</Text>
               {completedTasks.map((task) => (
-                <TouchableOpacity
+                <View
                   key={task.id}
                   style={[styles.taskCard, styles.completedTask]}
-                  onPress={() => toggleTask(task.id)}
                 >
-                  <View style={styles.taskLeft}>
+                  <TouchableOpacity
+                    style={styles.taskLeft}
+                    onPress={() => toggleTaskCompletion(task.id)}
+                  >
                     <CheckCircle2 size={24} color="#87A96B" />
                     <View style={styles.taskContent}>
                       <Text style={[styles.taskTitle, styles.completedTitle]}>
@@ -203,18 +497,45 @@ export default function TasksScreen() {
                       <View style={styles.taskFooter}>
                         <View style={styles.rewardInfo}>
                           <Leaf size={14} color="#87A96B" />
-                          <Text style={styles.rewardText}>+{task.compostReward} earned</Text>
+                          <Text style={styles.rewardText}>
+                            +{task.compostReward} earned
+                          </Text>
                         </View>
+                        {task.completedAt && (
+                          <Text style={styles.completedTime}>
+                            Completed{' '}
+                            {task.completedAt.toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </Text>
+                        )}
                       </View>
                     </View>
+                  </TouchableOpacity>
+
+                  {/* Completed Task Actions */}
+                  <View style={styles.taskActions}>
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() => archiveTask(task.id)}
+                    >
+                      <Archive size={16} color="#8B7355" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() => deleteTask(task.id)}
+                    >
+                      <Trash2 size={16} color="#D97757" />
+                    </TouchableOpacity>
                   </View>
-                </TouchableOpacity>
+                </View>
               ))}
             </View>
           )}
         </ScrollView>
 
-        {/* Add Task Modal */}
+        {/* Add/Edit Task Modal */}
         <Modal
           visible={showAddModal}
           animationType="slide"
@@ -222,12 +543,16 @@ export default function TasksScreen() {
         >
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setShowAddModal(false)}>
+              <TouchableOpacity onPress={closeModal}>
                 <Text style={styles.cancelButton}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Plant New Task</Text>
-              <TouchableOpacity onPress={addTask}>
-                <Text style={styles.saveButton}>Plant</Text>
+              <Text style={styles.modalTitle}>
+                {editingTask ? 'Edit Task' : 'Plant New Task'}
+              </Text>
+              <TouchableOpacity onPress={editingTask ? updateTask : createTask}>
+                <Text style={styles.saveButton}>
+                  {editingTask ? 'Update' : 'Plant'}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -238,7 +563,9 @@ export default function TasksScreen() {
                   style={styles.textInput}
                   placeholder="What would you like to accomplish?"
                   value={newTask.title}
-                  onChangeText={(text) => setNewTask({ ...newTask, title: text })}
+                  onChangeText={(text) =>
+                    setNewTask({ ...newTask, title: text })
+                  }
                 />
               </View>
 
@@ -248,7 +575,9 @@ export default function TasksScreen() {
                   style={[styles.textInput, styles.textArea]}
                   placeholder="Add some details..."
                   value={newTask.description}
-                  onChangeText={(text) => setNewTask({ ...newTask, description: text })}
+                  onChangeText={(text) =>
+                    setNewTask({ ...newTask, description: text })
+                  }
                   multiline
                   numberOfLines={3}
                 />
@@ -262,15 +591,20 @@ export default function TasksScreen() {
                       key={priority}
                       style={[
                         styles.priorityOption,
-                        newTask.priority === priority && styles.prioritySelected,
-                        { borderColor: getPriorityColor(priority) }
+                        newTask.priority === priority &&
+                          styles.prioritySelected,
+                        { borderColor: getPriorityColor(priority) },
                       ]}
                       onPress={() => setNewTask({ ...newTask, priority })}
                     >
-                      <Text style={[
-                        styles.priorityText,
-                        newTask.priority === priority && { color: getPriorityColor(priority) }
-                      ]}>
+                      <Text
+                        style={[
+                          styles.priorityText,
+                          newTask.priority === priority && {
+                            color: getPriorityColor(priority),
+                          },
+                        ]}
+                      >
                         {priority.charAt(0).toUpperCase() + priority.slice(1)}
                       </Text>
                     </TouchableOpacity>
@@ -281,26 +615,32 @@ export default function TasksScreen() {
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Category</Text>
                 <View style={styles.categorySelector}>
-                  {(['personal', 'work', 'health', 'learning'] as const).map((category) => (
-                    <TouchableOpacity
-                      key={category}
-                      style={[
-                        styles.categoryOption,
-                        newTask.category === category && styles.categorySelected
-                      ]}
-                      onPress={() => setNewTask({ ...newTask, category })}
-                    >
-                      <Text style={styles.categoryEmoji}>
-                        {getCategoryIcon(category)}
-                      </Text>
-                      <Text style={[
-                        styles.categoryText,
-                        newTask.category === category && styles.categorySelectedText
-                      ]}>
-                        {category.charAt(0).toUpperCase() + category.slice(1)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  {(['personal', 'work', 'health', 'learning'] as const).map(
+                    (category) => (
+                      <TouchableOpacity
+                        key={category}
+                        style={[
+                          styles.categoryOption,
+                          newTask.category === category &&
+                            styles.categorySelected,
+                        ]}
+                        onPress={() => setNewTask({ ...newTask, category })}
+                      >
+                        <Text style={styles.categoryEmoji}>
+                          {getCategoryIcon(category)}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.categoryText,
+                            newTask.category === category &&
+                              styles.categorySelectedText,
+                          ]}
+                        >
+                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  )}
                 </View>
               </View>
             </ScrollView>
@@ -316,6 +656,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F1E8',
   },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   gradient: {
     flex: 1,
   },
@@ -323,6 +667,10 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 100,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
   },
   header: {
     flexDirection: 'row',
@@ -363,6 +711,25 @@ const styles = StyleSheet.create({
     color: '#2C5F41',
     marginBottom: 16,
   },
+  emptyState: {
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(229, 221, 208, 0.6)',
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8B7355',
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
   taskCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderRadius: 16,
@@ -375,6 +742,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   completedTask: {
     backgroundColor: 'rgba(135, 169, 107, 0.1)',
@@ -384,6 +753,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
+    flex: 1,
   },
   taskContent: {
     flex: 1,
@@ -447,6 +817,25 @@ const styles = StyleSheet.create({
   dueText: {
     fontSize: 12,
     color: '#8B7355',
+  },
+  completedTime: {
+    fontSize: 12,
+    color: '#8B7355',
+  },
+  taskActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginLeft: 8,
+  },
+  actionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(229, 221, 208, 0.6)',
   },
   modalContainer: {
     flex: 1,
