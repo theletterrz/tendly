@@ -11,8 +11,15 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
+import {
+  useAbstraxionAccount,
+  useAbstraxionSigningClient,
+  useAbstraxionClient,
+} from '@burnt-labs/abstraxion-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   Sprout,
   Plus,
@@ -29,6 +36,44 @@ import { CompostCounter } from '@/components/CompostCounter';
 import { Task, Plant } from '@/types/xion';
 
 const { width } = Dimensions.get('window');
+
+type RootStackParamList = {
+  index: { refresh?: number };
+};
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'index'>;
+
+if (!process.env.EXPO_PUBLIC_DOCUSTORE_CONTRACT_ADDRESS) {
+  throw new Error(
+    'EXPO_PUBLIC_DOCUSTORE_CONTRACT_ADDRESS is not set in your environment file'
+  );
+}
+
+// Add retry utility function
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve: () => void) => setTimeout(resolve, ms));
+
+const retryOperation = async <T,>(
+  operation: () => Promise<T>,
+  maxRetries = 3,
+  delay = 1000
+): Promise<T> => {
+  let lastError: Error | null = null;
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error as Error;
+      console.log(`Attempt ${i + 1} failed:`, error);
+      if (i < maxRetries - 1) {
+        await sleep(delay * Math.pow(2, i)); // Exponential backoff
+      }
+    }
+  }
+
+  throw lastError;
+};
 
 const STORAGE_KEYS = {
   TASKS: 'tendly_tasks',
@@ -51,6 +96,23 @@ export default function GardenScreen() {
     priority: 'medium' as const,
     category: 'personal' as const,
   });
+
+  // Abstraxion hooks - always call them unconditionally
+  const abstraxionAccount = useAbstraxionAccount();
+  const abstraxionSigningClient = useAbstraxionSigningClient();
+  const abstraxionClient = useAbstraxionClient();
+  const navigation = useNavigation<NavigationProp>();
+
+  // Destructure with fallbacks to ensure stable references
+  const {
+    data: account,
+    logout,
+    login,
+    isConnected,
+    isConnecting,
+  } = abstraxionAccount || {};
+  const { client } = abstraxionSigningClient || {};
+  const { client: queryClient } = abstraxionClient || {};
 
   // Load data on component mount
   useEffect(() => {
