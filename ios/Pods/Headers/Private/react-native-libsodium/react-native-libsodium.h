@@ -1,1 +1,0 @@
-../../../../../node_modules/react-native-libsodium/cpp/react-native-libsodium.h

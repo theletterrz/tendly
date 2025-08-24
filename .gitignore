@@ -25,20 +25,27 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env
-.env*.local
-
 # typescript
 *.tsbuildinfo
 
 app-example
 
-android/
-ios/
+/android/
 
-.env*.local
+# Environment files
+/.env
+/.env.*
+!.env.example
+
+# iOS / Xcode
+/ios/
+/ios/Pods/
+/ios/build/
+/ios/*.xcworkspace
+/ios/*.xcodeproj
+*.xcuserdatad
+xcuserdata/
+*.xcuserstate
+DerivedData/
+.DS_Store
+*.pem

@@ -1,6 +1,0 @@
-module Pods_Tendly {
-  umbrella header "Pods-Tendly-umbrella.h"
-
-  export *
-  module * { export * }
-}
